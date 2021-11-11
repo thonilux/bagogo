@@ -1,0 +1,2 @@
+# bagogo
+ngapain kesini, pergi
