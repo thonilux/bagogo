@@ -92,6 +92,9 @@ void displayInfo()
   http.end();
   delay(1000);
   }
+  else{
+  println("location Invalid");
+  }
 
   
   Serial.print("Date: ");
