@@ -1,5 +1,4 @@
-//GPS Nilainya udah null, Voltage Readernya masih error, entah karena si voltage dividernya atau gimana.
-//Voltage dividernya work well dites make multimeter, tapi pas di coba ke esp masih error :(
+//Update 22/11/21 Udah digabungin tegangan dan gps. udah di set code udah diupload ke web. data tegangan muncul di API Bat, data GPS gaada di web karena loation invalid
 
 #include <WiFi.h>
 #include <HTTPClient.h>
