@@ -1,26 +1,132 @@
-void setup() {
-  Serial.begin(9600); //Start Serial Monitor to display current read value on Serial monitor
+//Tes Real Time Clock, Relay Cut Off, dan Disinfektan 
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <Wire.h>
+int i = 1;
+int adc_value = 0;
+int Power = 0;
+int id = 1;
+
+#define cutoff 5
+#define disinfektan 14
+const int BUTTON = 4;
+
+//Connect to SSID
+const char *ssid     = "PRN ICT";
+const char *password = "prnict2021";
+
+const long utcOffsetInSeconds = 25200;
+char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+// Define NTP Client to get time
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "id.pool.ntp.org", utcOffsetInSeconds);
+
+void setup(){
+  Serial.begin(115200);
+//WiFi Begin
+  WiFi.begin(ssid, password);
+  while ( WiFi.status() != WL_CONNECTED ) {
+    delay ( 500 );
+    Serial.print ( "." );
+  }
+  timeClient.begin();
+  pinMode(cutoff,OUTPUT);
+  pinMode(BUTTON,INPUT_PULLUP);
+  pinMode(disinfektan,OUTPUT);
 }
 
 void loop() {
-unsigned int x=0;
-float AcsValue=0.0,Samples=0.0,AvgAcs=0.0,AcsValueF=0.0;
+  HTTPClient http;
+  //Pembacaan dan Pengambilan Waktu dari NTP Client
+  timeClient.update();
 
-  for (int x = 0; x < 150; x++){ //Get 150 samples
-  AcsValue = analogRead(34);     //Read current sensor values   
-  Samples = Samples + AcsValue;  //Add samples together
-  delay (3); // let ADC settle before next sample 3ms
-}
-AvgAcs=Samples/150.0;//Taking Average of Samples
+  Serial.print(daysOfTheWeek[timeClient.getDay()]);
+  Serial.print(", ");
+  Serial.print(timeClient.getHours());
+  Serial.print(":");
+  Serial.print(timeClient.getMinutes());
+  Serial.print(":");
+  Serial.println(timeClient.getSeconds());
+  //Serial.println(timeClient.getFormattedTime());
+  
+  delay(1000);
+  int menit = timeClient.getMinutes();
 
-//((AvgAcs * (5.0 / 1024.0)) is converitng the read voltage in 0-5 volts
-//2.5 is offset(I assumed that arduino is working on 5v so the viout at no current comes
-//out to be 2.5 which is out offset. If your arduino is working on different voltage than 
-//you must change the offset according to the input voltage)
-//0.100v(100mV) is rise in output voltage when 1A current flows at input
-AcsValueF = (97.16 + ((2.5 - (AvgAcs * (5.0 / 1024.0)) )/0.100))/10;
+  //Baca Power (Tegangan x Arus)
+  unsigned int x=0;
+    float AcsValue=0.0,Samples=0.0,AvgAcs=0.0,AcsValueF=0.0;
 
-Serial.print("Current = ");
-Serial.println(AcsValueF);//Print the read current on Serial monitor
-delay(50);
+     for (int x = 0; x < 150; x++){ //Get 150 samples
+     AcsValue = analogRead(34);     //Read current sensor values   
+     Samples = Samples + AcsValue;  //Add samples together
+     delay (3); // let ADC settle before next sample 3ms
+
+     // Read the Analog Input
+      adc_value = analogRead(35);
+      }
+      AvgAcs=Samples/150.0;//Taking Average of Samples
+
+     //((AvgAcs * (5.0 / 1024.0)) is converitng the read voltage in 0-5 volts
+     //2.5 is offset(I assumed that arduino is working on 5v so the viout at no current comes
+     //out to be 2.5 which is out offset. If your arduino is working on different voltage than 
+     //you must change the offset according to the input voltage)
+     //0.100v(100mV) is rise in output voltage when 1A current flows at input
+     AcsValueF = (97.16 + ((2.5 - (AvgAcs * (5.0 / 1024.0)) )/0.100))/10;
+
+     Power= adc_value*AcsValue;
+
+     Serial.print("Current = ");
+     Serial.println(AcsValueF);//Print the read current on Serial monitor
+     Serial.print("Input Voltage = ");
+     Serial.println(adc_value);
+     Serial.print("Daya = ");
+     Serial.println(Power);
+
+ if(i==1){
+  //Get Data Website (Disinfektan)
+  http.begin("https://enerma.id/gokart/api/getDisinfectant");
+  int httpCode=http.GET();
+  String response = http.getString();
+  if(response='1'){
+    digitalWrite(disinfektan, HIGH);
+  }
+  if(response='0'){
+    digitalWrite(disinfektan,LOW);
+  }
+  http.end();
+  Serial.println(response);
+  i++;
+
+  //Button (Disinfektan)
+  int buttonstate = digitalRead(BUTTON);
+  if(buttonstate == LOW){
+    digitalWrite(disinfektan,HIGH);
+  }
+  else if(buttonstate == HIGH){
+    digitalWrite(disinfektan,LOW);
+  }
+ 
+ }
+
+ else if(i==2){
+  //Cutoff Setiap 3 Menit + Kirim Data ke Web
+  Serial.println("Kondisi 2");
+  if(menit == 3||6||9||12||15||18||21||24||27||30||33||36||39||42||45||48||51||54||57||0){
+    digitalWrite(cutoff, HIGH);
+     http.begin("http://enerma.id/gokart/api/ChargeData");
+     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+     String dataout = "id_gokart="+String(id)+"&power=" + String(Power) +"&submit=enter";
+     int httpResponseCode = http.POST(dataout);  
+     Serial.println(httpResponseCode);
+     http.end();
+     i=1;
+     delay(50);
+  }
+  else{
+    digitalWrite(cutoff, LOW);
+  }
+ }
 }
