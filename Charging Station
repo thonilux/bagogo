@@ -1,3 +1,5 @@
+//Charging Station Gokart SMK Daya Wangsa Wonogiri
+//Enerma
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <Wire.h>
@@ -9,6 +11,9 @@ int adc_value = 0;
 int adc_value2 = 0;
 int Power = 0;
 int id = 1;
+int voltage_valuePV = 0;
+int voltage_valueBat= 0;
+float AcsValue=0.0,Samples=0.0,AvgAcs=0.0,AcsValueF=0.0;
 
 const char *ssid     = "PRN ICT";
 const char *password = "prnict2021";
@@ -34,15 +39,17 @@ void setup() {
 Serial.println("Relay On");
 //Baca Power (Tegangan x Arus)
     unsigned int x=0;
-    float AcsValue=0.0,Samples=0.0,AvgAcs=0.0,AcsValueF=0.0;
-
+    
      for (int x = 0; x < 150; x++){ //Get 150 samples
      AcsValue = analogRead(34);     //Read current sensor values   
      Samples = Samples + AcsValue;  //Add samples together
      delay (3); // let ADC settle before next sample 3ms
 
      // Read the Analog Input
-      adc_value = analogRead(35); //Perlu dikonversinih!
+      adc_value = analogRead(35);
+      voltage_valuePV=(adc_value * 3.3)/(4095);
+      Serial.print("Tegangan Battery =");
+      Serial.println(voltage_valuePV);
       }
       AvgAcs=Samples/150.0;//Taking Average of Samples
 
@@ -53,24 +60,25 @@ Serial.println("Relay On");
      //0.100v(100mV) is rise in output voltage when 1A current flows at input
      AcsValueF = (97.16 + ((2.5 - (AvgAcs * (5.0 / 1024.0)) )/0.100))/10;
 
-     Power= adc_value*AcsValue;
+     Power= adc_value*AcsValueF;
 
-     Serial.print("Current = ");
+     Serial.print("Arus PV = ");
      Serial.println(AcsValueF);//Print the read current on Serial monitor
-     Serial.print("Input Voltage = ");
-     Serial.println(adc_value);
-     Serial.print("Daya = ");
+     Serial.print("Tegangan PV = ");
+     Serial.println(voltage_valuePV);
+     Serial.print("Daya PV = ");
      Serial.println(Power);
 
      //Baca Tegangan Batt
-     adc_value2 = analogRead(36); //ini juga perlu dikonversi
+     adc_value2 = analogRead(36);
+     voltage_valueBat=(adc_value2 * 3.3)/(4095);
      Serial.print("Tegangan Battery =");
-     Serial.println(adc_value2);
+     Serial.println(voltage_valueBat);
 
      //Kirim Web
      http.begin("https://enerma.id/gokart/api/ChargeData");
      http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-     String dataout = "id_gokart="+String(id)+"&solar=" + String(Power) +"&battery=" + String(adc_value2) +"&submit=enter";
+     String dataout = "id_gokart="+String(id)+"&solar=" + String(Power) +"&battery=" + String(voltage_valueBat) +"&submit=enter";
      int httpResponseCode = http.POST(dataout);  
      Serial.println(httpResponseCode);
      http.end();
@@ -79,6 +87,27 @@ Serial.println("Relay On");
 }
 
 void loop() {
+    //Baca Power (Tegangan x Arus)
+    unsigned int x=0;
+    for (int x = 0; x < 150; x++){ //Get 150 samples
+     AcsValue = analogRead(34);     //Read current sensor values   
+     Samples = Samples + AcsValue;  //Add samples together
+     delay (3); // let ADC settle before next sample 3ms
+
+     // Read the Analog Input
+      adc_value = analogRead(35);
+      voltage_valuePV=(adc_value * 3.3)/(4095);
+      }
+      AvgAcs=Samples/150.0;//Taking Average of Samples
+
+     //((AvgAcs * (5.0 / 1024.0)) is converitng the read voltage in 0-5 volts
+     //2.5 is offset(I assumed that arduino is working on 5v so the viout at no current comes
+     //out to be 2.5 which is out offset. If your arduino is working on different voltage than 
+     //you must change the offset according to the input voltage)
+     //0.100v(100mV) is rise in output voltage when 1A current flows at input
+     AcsValueF = (97.16 + ((2.5 - (AvgAcs * (5.0 / 1024.0)) )/0.100))/10;
+     Power= adc_value*AcsValueF;
+     
   disinfektanData();
   sendData();
 }
@@ -122,43 +151,22 @@ void sendData(){
     Serial.println(currentMillis);
     digitalWrite(cutoff,HIGH);
     Serial.println("Relay On");
-    //Baca Power (Tegangan x Arus)
-    unsigned int x=0;
-    float AcsValue=0.0,Samples=0.0,AvgAcs=0.0,AcsValueF=0.0;
-
-     for (int x = 0; x < 150; x++){ //Get 150 samples
-     AcsValue = analogRead(34);     //Read current sensor values   
-     Samples = Samples + AcsValue;  //Add samples together
-     delay (3); // let ADC settle before next sample 3ms
-
-     // Read the Analog Input
-      adc_value = analogRead(35);
-      }
-      AvgAcs=Samples/150.0;//Taking Average of Samples
-
-     //((AvgAcs * (5.0 / 1024.0)) is converitng the read voltage in 0-5 volts
-     //2.5 is offset(I assumed that arduino is working on 5v so the viout at no current comes
-     //out to be 2.5 which is out offset. If your arduino is working on different voltage than 
-     //you must change the offset according to the input voltage)
-     //0.100v(100mV) is rise in output voltage when 1A current flows at input
-     AcsValueF = (97.16 + ((2.5 - (AvgAcs * (5.0 / 1024.0)) )/0.100))/10;
-
-     Power= adc_value*AcsValue;
-
-     Serial.print("Current = ");
-     Serial.println(AcsValueF);//Print the read current on Serial monitor
-     Serial.print("Input Voltage = ");
-     Serial.println(adc_value);
-     Serial.print("Daya = ");
-     Serial.println(Power);
-
+   
      //Baca Tegangan Batt
      adc_value2 = analogRead(36);
+     voltage_valueBat=(adc_value2 * 3.3)/(4095);
+     Serial.print("Arus PV = ");
+     Serial.println(AcsValueF);//Print the read current on Serial monitor
+     Serial.print("Tegangan PV = ");
+     Serial.println(voltage_valuePV);
+     Serial.print("Daya PV = ");
+     Serial.println(Power);
      Serial.print("Tegangan Battery =");
-     Serial.println(adc_value2);
+     Serial.println(voltage_valueBat);
+     
      http.begin("https://enerma.id/gokart/api/ChargeData");
      http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-     String dataout = "id_gokart="+String(id)+"&solar=" + String(Power) +"&battery=" + String(adc_value2) +"&submit=enter";
+     String dataout = "id_gokart="+String(id)+"&solar=" + String(Power) +"&battery=" + String(voltage_valueBat) +"&submit=enter";
      int httpResponseCode = http.POST(dataout);  
      Serial.println(httpResponseCode);
      http.end();
