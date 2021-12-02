@@ -42,7 +42,7 @@ Serial.println("Relay On");
      delay (3); // let ADC settle before next sample 3ms
 
      // Read the Analog Input
-      adc_value = analogRead(35);
+      adc_value = analogRead(35); //Perlu dikonversinih!
       }
       AvgAcs=Samples/150.0;//Taking Average of Samples
 
@@ -63,7 +63,7 @@ Serial.println("Relay On");
      Serial.println(Power);
 
      //Baca Tegangan Batt
-     adc_value2 = analogRead(36);
+     adc_value2 = analogRead(36); //ini juga perlu dikonversi
      Serial.print("Tegangan Battery =");
      Serial.println(adc_value2);
 
