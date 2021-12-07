@@ -1,0 +1,20 @@
+function loop(){
+	rpm();
+	//otherFunction();
+}
+
+function rpm(){
+	int s = 0;
+	int x = digitalRead(pin);
+	
+	while(x == 1 && s < 2){
+		oldMil = milis();
+		if(x == 0) s++;			      // s = 1
+		if(x == 1){
+			newMil = milis();
+			s++; 				            // s = 2
+		}
+	}
+	timeMil = newMil - oldMil;	// time 1 rotasi
+	rpm = timeMil*60;
+}
