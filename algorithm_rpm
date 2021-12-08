@@ -1,20 +1,71 @@
-function loop(){
-	rpm();
-	//otherFunction();
+int pin = 4;
+int oldMil;
+int newMil;
+
+int s2 = 0;
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  pinMode(pin, INPUT);
+
 }
 
-function rpm(){
-	int s = 0;
-	int x = digitalRead(pin);
-	
-	while(x == 1 && s < 2){
-		oldMil = milis();
-		if(x == 0) s++;			      // s = 1
-		if(x == 1){
-			newMil = milis();
-			s++; 				            // s = 2
-		}
-	}
-	timeMil = newMil - oldMil;	// time 1 rotasi
-	rpm = timeMil*60;
+void loop() {
+  // put your main code here, to run repeatedly:
+  Serial.println("=====================");
+  rpm();
+  delay(100);
+}
+
+void rpm() {
+  int s = 0;
+  int x = digitalRead(pin);
+//  Serial.print("Initial Pin State = ");
+//  Serial.println(x);
+  if (x == 0) {
+    s2 = 1;                           // Sensor Ready
+  }
+  else {
+    int rpm = 0;
+    Serial.print("RPM = ");
+    Serial.println(rpm);
+  }
+
+  while (s2 != 0 && s < 2) {
+    x = digitalRead(pin);
+    //    Serial.print("Semaphore = ");
+    //    Serial.println(s);
+    //    Serial.print("Pin State = ");
+    //    Serial.println(x);
+    if (x == 1) {
+      if (s == 0) {
+        oldMil = millis();
+        Serial.print("Old Millis = ");
+        Serial.println(oldMil);
+      }
+      s = 1;           // s = 1
+      //      Serial.print("Semaphore = ");
+      //      Serial.println(s);
+      //      Serial.print("Pin State = ");
+      //      Serial.println(x);
+    }
+    if (x == 0 && s == 1) {
+      newMil = millis();
+      s = 2;                    // s = 2
+      s2 = 0;
+//      Serial.print("Semaphore = ");
+//      Serial.println(s);
+//      Serial.print("Pin State = ");
+//      Serial.println(x);
+      Serial.print("New Millis = ");
+      Serial.println(newMil);
+      int timeMil = newMil - oldMil;  // time 1 rotasi
+      int rpm = 60000 / (timeMil*8);
+      Serial.print("Time Millis = ");
+      Serial.println(timeMil);
+      Serial.print("RPM = ");
+      Serial.println(rpm);
+    }
+  }
 }
