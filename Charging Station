@@ -5,21 +5,22 @@
 #include <Wire.h>
 #define cutoff 5
 #define disinfektan 18
-int i = 1; 
+int i = 1;  
 int adc_value = 0;
 int adc_value2 = 0;
+ 
 int Power = 0;
 int id = 1;
 int voltage_valuePV = 0;
 int voltage_valueBat= 0;
 int current_valuePV = 0;
-float AcsValue=0.0,Samples=0.0,AvgAcs=0.0,AcsValueF=0.0;
+float AcsValue=0.0,Samples=0.0,AvgAcs=0.0,AcsValueF=0.0;  
 
-const char *ssid     = "DfR Private Network";
-const char *password = "12345678"; 
+const char *ssid     = "Adzin The Catalyst";
+const char *password = "Daneen30"; 
 
 long previousMillis = 0; 
-long interval = 10000;
+long interval = 180000;
 
 HTTPClient http;
 
@@ -41,7 +42,7 @@ void setup() {
     
      for (int x = 0; x < 150; x++){ //Get 150 samples
      AcsValue = analogRead(34);     //Baca nilai AcsValue analogread 
-     Samples =  AcsValue;  //Add samples together
+     Samples =  AcsValue;  //Add samples together 
      delay (3); // let ADC settle before next sample 3ms
 
      // Read the Analog Input
@@ -57,7 +58,8 @@ void setup() {
      //out to be 2.5 which is out offset. If your arduino is working on different voltage than 
      //you must change the offset according to the input voltage)
      //0.100v(100mV) is rise in output voltage when 1A current flows at input
-     AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
+     //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
+     AcsValueF = ((0.9942*AcsValue)-1887.9)/100; 
 
      Power = voltage_valuePV*AcsValueF; //Konversi ke Power (VxI)
 
@@ -104,7 +106,8 @@ void loop() {
      //out to be 2.5 which is out offset. If your arduino is working on different voltage than 
      //you must change the offset according to the input voltage)
      //0.100v(100mV) is rise in output voltage when 1A current flows at input
-     AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
+     //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
+     AcsValueF = ((0.9942*AcsValue)-1887.9)/100;
      Power= voltage_valuePV*AcsValueF; //Konversi ke Power
      
   disinfektanData();
