@@ -136,7 +136,7 @@ void sendData(){
   unsigned long currentMillis = millis(); //Hitung millisecond
   digitalWrite(cutoff,LOW); //Relay tidak aktif
   Serial.println("Relay Off");
-  delay(1000);
+  delay(2000);
   if(currentMillis - previousMillis >= interval) {
     // save the last time you blinked the LED 
     previousMillis = currentMillis; 
