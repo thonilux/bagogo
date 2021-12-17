@@ -3,128 +3,126 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <Wire.h>
-#define cutoff 5
-#define disinfektan 18
-int i = 1;  
-int adc_value = 0;
-int adc_value2 = 0;
- 
-int Power = 0;
-int id = 1;
-int voltage_valuePV = 0;
-int voltage_valueBat= 0;
-int current_valuePV = 0;
-float AcsValue=0.0,Samples=0.0,AvgAcs=0.0,AcsValueF=0.0;  
 
-const char *ssid     = "Adzin The Catalyst";
-const char *password = "Daneen30"; 
+#define cutoff 5 //Pin relay Cutoff
+#define disinfektan 18 //Pin relay Disinfektan
+int i = 1; //Kirim Web
+int adc_value = 0; //Data ADC Sensor Tegangan
+int adc_value2 = 0; //Data ADC Sensor Tegangan
 
-long previousMillis = 0; 
-long interval = 180000;
+int Power = 0; //Daya
+int id = 1; //Kirim Web
+float voltage_valuePV = 0; //Nilai Tegangan PV
+float voltage_valueBat = 0; //Nilai Tegangan Baterai
+float current_valuePV = 0; //Nilai Arus PV
+float AcsValue = 0.0, Samples = 0.0, AvgAcs = 0.0, AcsValueF = 0.0; //Var Arus PV
+
+//Koneksi WiFi
+const char *ssid     = "PRN ICT";
+const char *password = "prnict2021";
+
+//Timer
+long previousMillis = 0;
+long interval = 3000;
 
 HTTPClient http;
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
-  //Mulai Connect WiFi
+  //Koneksi WiFi
   WiFi.begin(ssid, password);
   while ( WiFi.status() != WL_CONNECTED ) {
     delay ( 500 );
     Serial.print ( "." );
   }
-  pinMode(cutoff,OUTPUT);
-  pinMode(disinfektan,OUTPUT);
-  digitalWrite(cutoff,HIGH);
+  //Deklarasi Input Output
+  pinMode(cutoff, OUTPUT);
+  pinMode(disinfektan, OUTPUT);
+  digitalWrite(cutoff, HIGH);
   Serial.println("Relay On");
-  //Baca Power (Tegangan x Arus)
-    unsigned int x=0;
-    
-     for (int x = 0; x < 150; x++){ //Get 150 samples
-     AcsValue = analogRead(34);     //Baca nilai AcsValue analogread 
-     Samples =  AcsValue;  //Add samples together 
-     delay (3); // let ADC settle before next sample 3ms
 
-     // Read the Analog Input
-      adc_value = analogRead(35); //Baca nilai tegangan analogread
-      voltage_valuePV= (adc_value*0.004) + 0.7256;; //Pengolahan nilai analog
-      Serial.print("Tegangan PV =");
-      Serial.println(voltage_valuePV);
-      }
-      AvgAcs=Samples/150.0;//Taking Average of Samples
+  //Baca Daya PV (Tegangan x Arus)
+  //Baca arus PV
+  unsigned int x = 0;
+  for (int x = 0; x < 150; x++) { //Ambil 150 sampel
+    AcsValue = analogRead(34);     //Baca nilai AcsValue analogread
+    Samples =  AcsValue;  //Sampel
+    delay (3); //Delay sampel berikutnya
+  }
 
-     //((AvgAcs * (5.0 / 1024.0)) is converitng the read voltage in 0-5 volts
-     //2.5 is offset(I assumed that arduino is working on 5v so the viout at no current comes
-     //out to be 2.5 which is out offset. If your arduino is working on different voltage than 
-     //you must change the offset according to the input voltage)
-     //0.100v(100mV) is rise in output voltage when 1A current flows at input
-     //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
-     AcsValueF = ((0.9942*AcsValue)-1887.9)/100; 
+  //Baca tegangan PV
+  adc_value = analogRead(35); //Baca nilai tegangan PV
+  voltage_valuePV = (adc_value * 0.0043) + 0.2659; //Pengolahan nilai analog
+  Serial.print("Tegangan PV =");
+  Serial.println(voltage_valuePV);
 
-     Power = voltage_valuePV*AcsValueF; //Konversi ke Power (VxI)
+  AvgAcs = Samples / 150.0; //Mengambil rata-rata sampel
+  //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
+  //AcsValueF = ((0.9942 * AcsValue) - 1887.9) / 100;
+  AcsValueF = ((0.0121 * AcsValue) - 23.252);
 
-     Serial.print("Arus PV = ");
-     Serial.println(AcsValueF);//Print the read current on Serial monitor
-     Serial.print("Tegangan PV = ");
-     Serial.println(voltage_valuePV);
-     Serial.print("Daya PV = ");
-     Serial.println(Power);
+  Power = voltage_valuePV * AcsValueF; //Konversi ke Power (VxI)
 
-     //Baca Tegangan Batt
-     adc_value2 = analogRead(36); //Baca nilai tegangan analogread
-     voltage_valueBat=(adc_value2*0.004) + 0.7256; //Pengolahan nilai tegangan analog
-     Serial.print("Tegangan Battery =");
-     Serial.println(voltage_valueBat);
+  Serial.print("Arus PV = ");
+  Serial.println(AcsValueF);//Print nilai arus PV
+  Serial.print("Tegangan PV = ");
+  Serial.println(voltage_valuePV); //Print nilai tegangan PV
+  Serial.print("Daya PV = ");
+  Serial.println(Power); //Print nilai tegangan baterai
 
-     //Kirim Web
-     http.begin("https://enerma.id/gokart/api/ChargeData");
-     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-     String dataout = "id_gokart="+String(id)+"&solar=" + String(Power) +"&battery=" + String(voltage_valueBat) +"&submit=enter";
-     int httpResponseCode = http.POST(dataout);  
-     Serial.println(httpResponseCode);
-     http.end();
-     i=1;   
-     delay(1000);
+  //Baca Tegangan Baterai
+  adc_value2 = analogRead(36); //Baca nilai tegangan baterai
+  voltage_valueBat = (adc_value2 * 0.0043) + 0.2659; //Pengolahan nilai tegangan analog
+  //voltage_valueBat= adc_value2*3.3/6142.5;
+  Serial.print("Tegangan Battery =");
+  Serial.println(voltage_valueBat); //Print nilai tegangan baterai
+
+  //Kirim Web HTTP
+  http.begin("https://enerma.id/gokart/api/ChargeData");
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+  String dataout = "id_gokart=" + String(id) + "&solar=" + String(Power) + "&battery=" + String(voltage_valueBat) + "&submit=enter";
+  int httpResponseCode = http.POST(dataout);
+  Serial.println(httpResponseCode);
+  http.end();
+  i = 1;
+  delay(1000);
 }
 
 void loop() {
-    //Baca Power (Tegangan x Arus)
-    unsigned int x=0;
-    for (int x = 0; x < 150; x++){ //Get 150 samples
-     AcsValue = analogRead(34);     //Baca AcsValue analogread
-     Samples = AcsValue;  //Add samples together
-     delay (3); // let ADC settle before next sample 3ms
+  //Baca Power (Tegangan x Arus)
+  //Baca arus
+  unsigned int x = 0;
+  for (int x = 0; x < 150; x++) { //Get 150 samples
+    AcsValue = analogRead(34);     //Baca AcsValue analogread
+    Samples = AcsValue;  //Add samples together
+    delay (3); // let ADC settle before next sample 3ms
+  }
+  //Baca tegangan PV
+  adc_value = analogRead(35); //Baca tegangan PV
+  voltage_valuePV = (adc_value * 0.0043) + 0.2659; //Pengolahan nilai tegangan analog
 
-     // Read the Analog Input
-      adc_value = analogRead(35); //Baca tegangan analog
-      voltage_valuePV=(adc_value*0.004) + 0.7256; //Pengolahan nilai tegangan analog
-      }
-      AvgAcs=Samples/150.0;//Taking Average of Samples
+  AvgAcs = Samples / 150.0; //Mengambil rata-rata sampel
+  //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
+  //AcsValueF = ((0.9942 * AcsValue) - 1887.9) / 100;
+  AcsValueF = ((0.0121 * AcsValue) - 23.252);
+  Power = voltage_valuePV * AcsValueF; //Konversi ke Power
 
-     //((AvgAcs * (5.0 / 1024.0)) is converitng the read voltage in 0-5 volts
-     //2.5 is offset(I assumed that arduino is working on 5v so the viout at no current comes
-     //out to be 2.5 which is out offset. If your arduino is working on different voltage than 
-     //you must change the offset according to the input voltage)
-     //0.100v(100mV) is rise in output voltage when 1A current flows at input
-     //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
-     AcsValueF = ((0.9942*AcsValue)-1887.9)/100;
-     Power= voltage_valuePV*AcsValueF; //Konversi ke Power
-     
+  //Panggil respon disinfektan & cutoff
   disinfektanData();
   sendData();
 }
-  
-void disinfektanData(){
+
+void disinfektanData() {
   //Get Data Website (Disinfektan)
   http.begin("https://enerma.id/gokart/api/getDisinfectant");
-  int httpCode=http.GET();
+  int httpCode = http.GET();
   String response = http.getString();
-  if(response=="1"){
+  if (response == "1") {
     digitalWrite(disinfektan, HIGH); //Relay aktif
     Serial.println("Disinfektan On");
   }
-  if(response=="0"){
-    digitalWrite(disinfektan,LOW); //Relay tidak aktif
+  if (response == "0") {
+    digitalWrite(disinfektan, LOW); //Relay tidak aktif
     Serial.println("Disinfektan Off");
   }
   Serial.println(response);
@@ -132,38 +130,40 @@ void disinfektanData(){
   i++;
 }
 
-void sendData(){
+void sendData() {
   unsigned long currentMillis = millis(); //Hitung millisecond
-  digitalWrite(cutoff,LOW); //Relay tidak aktif
+  digitalWrite(cutoff, LOW); //Relay tidak aktif
   Serial.println("Relay Off");
   delay(2000);
-  if(currentMillis - previousMillis >= interval) {
-    // save the last time you blinked the LED 
-    previousMillis = currentMillis; 
+  //Kondisi timer
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
     Serial.print("millis: ");
     Serial.println(currentMillis);
-    digitalWrite(cutoff,HIGH);
+    digitalWrite(cutoff, HIGH); //Memutus arus dari SCC
     Serial.println("Relay On");
-   
-     //Baca Tegangan Batt
-     adc_value2 = analogRead(36); //Baca tegangan analogread
-     voltage_valueBat=(adc_value2*0.004) + 0.7256;  //Pengolahan nilai tegangan analog
-     Serial.print("Arus PV = ");
-     Serial.println(AcsValueF);//Print the read current on Serial monitor
-     Serial.print("Tegangan PV = ");
-     Serial.println(voltage_valuePV);
-     Serial.print("Daya PV = ");
-     Serial.println(Power);
-     Serial.print("Tegangan Battery =");
-     Serial.println(voltage_valueBat);
-     
-     http.begin("https://enerma.id/gokart/api/ChargeData");
-     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-     String dataout = "id_gokart="+String(id)+"&solar=" + String(Power) +"&battery=" + String(voltage_valueBat) +"&submit=enter";
-     int httpResponseCode = http.POST(dataout);  
-     Serial.println(httpResponseCode);
-     http.end();
-     i=1;   
-     delay(1000);
+
+    //Baca Tegangan Baterai
+    adc_value2 = analogRead(36); //Baca tegangan analogread
+    voltage_valueBat = (adc_value * 0.0043) + 0.2659; //Pengolahan nilai tegangan analog
+    //voltage_valueBat= adc_value2*3.3/6142.5;
+    Serial.print("Arus PV = ");
+    Serial.println(AcsValueF);//Print nilai arus PV
+    Serial.print("Tegangan PV = ");
+    Serial.println(voltage_valuePV);//Print nilai tegangan PV
+    Serial.print("Daya PV = ");
+    Serial.println(Power);
+    Serial.print("Tegangan Battery =");
+    Serial.println(voltage_valueBat);//Print nilai tegangan baterai
+
+    //Kirim Web HTTP
+    http.begin("https://enerma.id/gokart/api/ChargeData");
+    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+    String dataout = "id_gokart=" + String(id) + "&solar=" + String(Power) + "&battery=" + String(voltage_valueBat) + "&submit=enter";
+    int httpResponseCode = http.POST(dataout);
+    Serial.println(httpResponseCode);
+    http.end();
+    i = 1;
+    delay(1000);
   }
 }
