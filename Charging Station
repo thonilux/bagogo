@@ -10,16 +10,17 @@ int i = 1; //Kirim Web
 int adc_value = 0; //Data ADC Sensor Tegangan
 int adc_value2 = 0; //Data ADC Sensor Tegangan
 
-int Power = 0; //Daya
+float Power = 0; //Daya
 int id = 1; //Kirim Web
 float voltage_valuePV = 0; //Nilai Tegangan PV
 float voltage_valueBat = 0; //Nilai Tegangan Baterai
 float current_valuePV = 0; //Nilai Arus PV
 float AcsValue = 0.0, Samples = 0.0, AvgAcs = 0.0, AcsValueF = 0.0; //Var Arus PV
+float AcsValueF2 = 0.0;
 
 //Koneksi WiFi
-const char *ssid     = "PRN ICT";
-const char *password = "prnict2021";
+const char *ssid     = "PK4";
+const char *password = "PK12345678";
 
 //Timer
 long previousMillis = 0;
@@ -44,27 +45,27 @@ void setup() {
   //Baca Daya PV (Tegangan x Arus)
   //Baca arus PV
   unsigned int x = 0;
-  for (int x = 0; x < 150; x++) { //Ambil 150 sampel
+  Samples = 0.0;
+  for (int x = 0; x < 1000; x++) { //Ambil 150 sampel
     AcsValue = analogRead(34);     //Baca nilai AcsValue analogread
-    Samples =  AcsValue;  //Sampel
-    delay (3); //Delay sampel berikutnya
+    Samples =  Samples + AcsValue;  //Sampel
   }
+
+  AvgAcs = Samples / 1000.0; //Mengambil rata-rata sampel
+  //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
+  AcsValueF = ((0.014 * AvgAcs) - 26.904);
+  AcsValueF2 = ((0.9137 * AcsValueF) + 0.0492);
 
   //Baca tegangan PV
   adc_value = analogRead(35); //Baca nilai tegangan PV
-  voltage_valuePV = (adc_value * 0.0043) + 0.2659; //Pengolahan nilai analog
+  voltage_valuePV = (adc_value * 0.0111) + 1.4111; //Pengolahan nilai analog
   Serial.print("Tegangan PV =");
   Serial.println(voltage_valuePV);
 
-  AvgAcs = Samples / 150.0; //Mengambil rata-rata sampel
-  //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
-  //AcsValueF = ((0.9942 * AcsValue) - 1887.9) / 100;
-  AcsValueF = ((0.0121 * AcsValue) - 23.252);
-
-  Power = voltage_valuePV * AcsValueF; //Konversi ke Power (VxI)
+  Power = voltage_valuePV * AcsValueF2; //Konversi ke Power (VxI)
 
   Serial.print("Arus PV = ");
-  Serial.println(AcsValueF);//Print nilai arus PV
+  Serial.println(AcsValueF2);//Print nilai arus PV
   Serial.print("Tegangan PV = ");
   Serial.println(voltage_valuePV); //Print nilai tegangan PV
   Serial.print("Daya PV = ");
@@ -72,7 +73,7 @@ void setup() {
 
   //Baca Tegangan Baterai
   adc_value2 = analogRead(36); //Baca nilai tegangan baterai
-  voltage_valueBat = (adc_value2 * 0.0043) + 0.2659; //Pengolahan nilai tegangan analog
+  voltage_valueBat = (adc_value2 * 0.0111) + 1.4111; //Pengolahan nilai tegangan analog
   //voltage_valueBat= adc_value2*3.3/6142.5;
   Serial.print("Tegangan Battery =");
   Serial.println(voltage_valueBat); //Print nilai tegangan baterai
@@ -92,20 +93,21 @@ void loop() {
   //Baca Power (Tegangan x Arus)
   //Baca arus
   unsigned int x = 0;
-  for (int x = 0; x < 150; x++) { //Get 150 samples
+  Samples = 0.0;
+  for (int x = 0; x < 1000; x++) { //Get 150 samples
     AcsValue = analogRead(34);     //Baca AcsValue analogread
-    Samples = AcsValue;  //Add samples together
-    delay (3); // let ADC settle before next sample 3ms
+    Samples = Samples + AcsValue;  //Add samples together
   }
+
+  AvgAcs = Samples / 1000.0; //Mengambil rata-rata sampel
+  //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
+  AcsValueF = ((0.014 * AvgAcs) - 26.904);
+  AcsValueF2 = ((0.9137 * AcsValueF) + 0.0492);
+  Power = voltage_valuePV * AcsValueF2; //Konversi ke Power
+
   //Baca tegangan PV
   adc_value = analogRead(35); //Baca tegangan PV
-  voltage_valuePV = (adc_value * 0.0043) + 0.2659; //Pengolahan nilai tegangan analog
-
-  AvgAcs = Samples / 150.0; //Mengambil rata-rata sampel
-  //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
-  //AcsValueF = ((0.9942 * AcsValue) - 1887.9) / 100;
-  AcsValueF = ((0.0121 * AcsValue) - 23.252);
-  Power = voltage_valuePV * AcsValueF; //Konversi ke Power
+  voltage_valuePV = (adc_value * 0.0111) + 1.4111; //Pengolahan nilai tegangan analog
 
   //Panggil respon disinfektan & cutoff
   disinfektanData();
@@ -145,10 +147,10 @@ void sendData() {
 
     //Baca Tegangan Baterai
     adc_value2 = analogRead(36); //Baca tegangan analogread
-    voltage_valueBat = (adc_value * 0.0043) + 0.2659; //Pengolahan nilai tegangan analog
+    voltage_valueBat = (adc_value2 * 0.0111) + 1.4111; //Pengolahan nilai tegangan analog
     //voltage_valueBat= adc_value2*3.3/6142.5;
     Serial.print("Arus PV = ");
-    Serial.println(AcsValueF);//Print nilai arus PV
+    Serial.println(AcsValueF2);//Print nilai arus PV
     Serial.print("Tegangan PV = ");
     Serial.println(voltage_valuePV);//Print nilai tegangan PV
     Serial.print("Daya PV = ");
