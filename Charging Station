@@ -16,15 +16,15 @@ float voltage_valuePV = 0; //Nilai Tegangan PV
 float voltage_valueBat = 0; //Nilai Tegangan Baterai
 float current_valuePV = 0; //Nilai Arus PV
 float AcsValue = 0.0, Samples = 0.0, AvgAcs = 0.0, AcsValueF = 0.0; //Var Arus PV
-float AcsValueF2 = 0.0;
+float AcsValueF2 = 0.0; 
 
 //Koneksi WiFi
-const char *ssid     = "PK4";
-const char *password = "PK12345678";
+const char *ssid     = "Adzin The Catalyst";
+const char *password = "Daneen30";
 
 //Timer
 long previousMillis = 0;
-long interval = 3000;
+long interval = 60000;
 
 HTTPClient http;
 
@@ -40,7 +40,7 @@ void setup() {
   pinMode(cutoff, OUTPUT);
   pinMode(disinfektan, OUTPUT);
   digitalWrite(cutoff, HIGH);
-  Serial.println("Relay On");
+  //Serial.println("Relay On");
 
   //Baca Daya PV (Tegangan x Arus)
   //Baca arus PV
@@ -134,8 +134,8 @@ void disinfektanData() {
 
 void sendData() {
   unsigned long currentMillis = millis(); //Hitung millisecond
-  digitalWrite(cutoff, LOW); //Relay tidak aktif
-  Serial.println("Relay Off");
+  digitalWrite(cutoff, HIGH); //Relay tidak aktif
+  //Serial.println("Relay Off");
   delay(2000);
   //Kondisi timer
   if (currentMillis - previousMillis >= interval) {
@@ -143,7 +143,7 @@ void sendData() {
     Serial.print("millis: ");
     Serial.println(currentMillis);
     digitalWrite(cutoff, HIGH); //Memutus arus dari SCC
-    Serial.println("Relay On");
+    //Serial.println("Relay On");
 
     //Baca Tegangan Baterai
     adc_value2 = analogRead(36); //Baca tegangan analogread
