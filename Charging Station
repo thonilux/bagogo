@@ -1,5 +1,5 @@
 //Charging Station Gokart SMK Daya Wangsa Wonogiri
-//Enerma
+//Enerma.id
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <Wire.h>
@@ -15,8 +15,8 @@ int id = 1; //Kirim Web
 float voltage_valuePV = 0; //Nilai Tegangan PV
 float voltage_valueBat = 0; //Nilai Tegangan Baterai
 float current_valuePV = 0; //Nilai Arus PV
-float AcsValue = 0.0, Samples = 0.0, AvgAcs = 0.0, AcsValueF = 0.0; //Var Arus PV
-float AcsValueF2 = 0.0; 
+float AcsValue = 0.0, Samples = 0.0, AvgAcs = 0.0, AcsValueF = 0.0; //Variabel Arus PV
+float AcsValueF2 = 0.0; //Nilai Final Arus PV
 
 //Koneksi WiFi
 const char *ssid     = "Adzin The Catalyst";
@@ -40,21 +40,19 @@ void setup() {
   pinMode(cutoff, OUTPUT);
   pinMode(disinfektan, OUTPUT);
   digitalWrite(cutoff, HIGH);
-  //Serial.println("Relay On");
 
   //Baca Daya PV (Tegangan x Arus)
   //Baca arus PV
   unsigned int x = 0;
   Samples = 0.0;
-  for (int x = 0; x < 1000; x++) { //Ambil 150 sampel
+  for (int x = 0; x < 1000; x++) { //Ambil 1000 sampel
     AcsValue = analogRead(34);     //Baca nilai AcsValue analogread
-    Samples =  Samples + AcsValue;  //Sampel
+    Samples =  Samples + AcsValue;  //Sampling AcsValue
   }
 
   AvgAcs = Samples / 1000.0; //Mengambil rata-rata sampel
-  //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
-  AcsValueF = ((0.014 * AvgAcs) - 26.904);
-  AcsValueF2 = ((0.9137 * AcsValueF) + 0.0492);
+  AcsValueF = ((0.014 * AvgAcs) - 26.904); //Nilai Kalibrasi 1 Arus PV
+  AcsValueF2 = ((0.9137 * AcsValueF) + 0.0492); //Nilai Kalibrasi 2 Arus PV
 
   //Baca tegangan PV
   adc_value = analogRead(35); //Baca nilai tegangan PV
@@ -74,11 +72,10 @@ void setup() {
   //Baca Tegangan Baterai
   adc_value2 = analogRead(36); //Baca nilai tegangan baterai
   voltage_valueBat = (adc_value2 * 0.0111) + 1.4111; //Pengolahan nilai tegangan analog
-  //voltage_valueBat= adc_value2*3.3/6142.5;
   Serial.print("Tegangan Battery =");
   Serial.println(voltage_valueBat); //Print nilai tegangan baterai
 
-  //Kirim Web HTTP
+  //Kirim Data ke Web
   http.begin("https://enerma.id/gokart/api/ChargeData");
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
   String dataout = "id_gokart=" + String(id) + "&solar=" + String(Power) + "&battery=" + String(voltage_valueBat) + "&submit=enter";
@@ -94,16 +91,15 @@ void loop() {
   //Baca arus
   unsigned int x = 0;
   Samples = 0.0;
-  for (int x = 0; x < 1000; x++) { //Get 150 samples
-    AcsValue = analogRead(34);     //Baca AcsValue analogread
-    Samples = Samples + AcsValue;  //Add samples together
+  for (int x = 0; x < 1000; x++) { //Ambil 1000 sampel
+    AcsValue = analogRead(34);     //Baca nilai AcsValue analogread
+    Samples = Samples + AcsValue;  //Sampling AcsValue
   }
 
   AvgAcs = Samples / 1000.0; //Mengambil rata-rata sampel
-  //AcsValueF = ((97.16 + ((1.65 - (AvgAcs * (3.3 / 4095.0)) )/0.100))/10)-11.37;
-  AcsValueF = ((0.014 * AvgAcs) - 26.904);
-  AcsValueF2 = ((0.9137 * AcsValueF) + 0.0492);
-  Power = voltage_valuePV * AcsValueF2; //Konversi ke Power
+  AcsValueF = ((0.014 * AvgAcs) - 26.904); //Nilai Kalibrasi 1 Arus PV
+  AcsValueF2 = ((0.9137 * AcsValueF) + 0.0492); //Nilai Kalibrasi 2 Arus PV
+  Power = voltage_valuePV * AcsValueF2; //Konversi ke Daya
 
   //Baca tegangan PV
   adc_value = analogRead(35); //Baca tegangan PV
@@ -121,11 +117,11 @@ void disinfektanData() {
   String response = http.getString();
   if (response == "1") {
     digitalWrite(disinfektan, HIGH); //Relay aktif
-    Serial.println("Disinfektan On");
+    Serial.println("Disinfektan On"); //Disinfektan menyala
   }
   if (response == "0") {
     digitalWrite(disinfektan, LOW); //Relay tidak aktif
-    Serial.println("Disinfektan Off");
+    Serial.println("Disinfektan Off"); //Disinfektan mati
   }
   Serial.println(response);
   http.end();
@@ -134,21 +130,18 @@ void disinfektanData() {
 
 void sendData() {
   unsigned long currentMillis = millis(); //Hitung millisecond
-  digitalWrite(cutoff, HIGH); //Relay tidak aktif
-  //Serial.println("Relay Off");
+  digitalWrite(cutoff, HIGH);
   delay(2000);
-  //Kondisi timer
+  //Kondisi timer (upload data setiap 1 menit)
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
     Serial.print("millis: ");
     Serial.println(currentMillis);
-    digitalWrite(cutoff, HIGH); //Memutus arus dari SCC
-    //Serial.println("Relay On");
+    digitalWrite(cutoff, HIGH);
 
     //Baca Tegangan Baterai
     adc_value2 = analogRead(36); //Baca tegangan analogread
     voltage_valueBat = (adc_value2 * 0.0111) + 1.4111; //Pengolahan nilai tegangan analog
-    //voltage_valueBat= adc_value2*3.3/6142.5;
     Serial.print("Arus PV = ");
     Serial.println(AcsValueF2);//Print nilai arus PV
     Serial.print("Tegangan PV = ");
@@ -158,7 +151,7 @@ void sendData() {
     Serial.print("Tegangan Battery =");
     Serial.println(voltage_valueBat);//Print nilai tegangan baterai
 
-    //Kirim Web HTTP
+    //Kirim Data ke Web
     http.begin("https://enerma.id/gokart/api/ChargeData");
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     String dataout = "id_gokart=" + String(id) + "&solar=" + String(Power) + "&battery=" + String(voltage_valueBat) + "&submit=enter";
